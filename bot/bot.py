@@ -1,8 +1,8 @@
 import logging
 from aiogram import Bot, Dispatcher, executor, types
-import keyboards as kb
+from keyboards import keyboards as kb
 from privacy import privacy
-API_TOKEN = '5273284238:AAEXBxZTxeDIWXJZXMktNJlk0otuMZamUqA'
+from config import API_TOKEN
 
 logging.basicConfig(level=logging.INFO)
 
