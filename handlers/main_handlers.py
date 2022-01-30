@@ -4,7 +4,6 @@ from aiogram import types
 import keyboards as kb
 from privacy import privacy_text
 from data_base import UsersBase
-import sqlite3
 from states import AnnouncementForm as ann
 from states import SummaryForm as sum
 
@@ -35,9 +34,13 @@ async def get_text_messages(message: types.Message):
 
 @dp.message_handler(text=['Мои объявления'])
 async def process_start_command(message: types.Message):
-    db.create_table_announcement()
-    await ann.WorkType.set()
-    await message.answer("Пожалуйста, сделайте выбор, используя клавиатуру ниже.", reply_markup=kb.markup_choiсe)
+    if db.check_users_announcement(message.from_user.id):
+        all_user_announcement = db.all_user_announcement(message.from_user.id)
+        await message.reply(all_user_announcement)
+    else:
+        db.create_table_announcement()
+        await ann.WorkType.set()
+        await message.answer("Пожалуйста, сделайте выбор, используя клавиатуру ниже.", reply_markup=kb.markup_choiсe)
 
 
 @dp.callback_query_handler(lambda c: c.data in ['Работа', 'Подработка'], state=ann.WorkType)
@@ -96,9 +99,13 @@ async def text_handler(message: types.Message):
 
 @dp.message_handler(text='Мои резюме')
 async def process_start_command(message: types.Message):
-    db.create_table_summary()
-    await sum.UserName.set()
-    await message.answer("Пожалуйста, введите Ваше ФИО.")
+    if db.check_users_summary(message.from_user.id):
+        all_user_summary = db.all_user_summary(message.from_user.id)
+        await message.reply(all_user_summary)
+    else:
+        db.create_table_summary()
+        await sum.UserName.set()
+        await message.answer("Пожалуйста, введите Ваше ФИО.")
 
 
 @dp.message_handler(state=sum.UserName)
