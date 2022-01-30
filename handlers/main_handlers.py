@@ -147,3 +147,4 @@ async def process_start_command(message: types.Message, state: FSMContext):
 async def text_handler(message: types.Message):
     all_summary = db.all_summary()
     await message.reply(all_summary)
+
