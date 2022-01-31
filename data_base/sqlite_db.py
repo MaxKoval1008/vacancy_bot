@@ -28,17 +28,19 @@ class UsersBase:
 
     def create_table_announcement(self):
         self.cur.execute('''CREATE TABLE IF NOT EXISTS announcement(
+                         id INTEGER PRIMARY KEY AUTOINCREMENT, 
                          work_type TEXT, 
                          name_vacancy TEXT, 
                          description TEXT, 
                          salary TEXT, 
-                         tel_number TEXT,
-                         user INTEGER, 
+                         tel_number TEXT, 
+                         user INTEGER,
+                         approved INTEGER,  
                          FOREIGN KEY (user) REFERENCES users (user_id))''')
 
     def add_to_db_announcement(self, list):
-        self.cur.execute('''INSERT INTO announcement(work_type, name_vacancy, description, salary, tel_number, user) 
-                         VALUES(?,?,?,?,?,?)''', list)
+        self.cur.execute('''INSERT INTO announcement(work_type, name_vacancy, description, salary, tel_number, user, 
+        approved) VALUES(?,?,?,?,?,?,?)''', list)
         self.conn.commit()
 
     def check_users_announcement(self, user_id):
@@ -52,13 +54,24 @@ class UsersBase:
         self.cur.execute("SELECT * FROM announcement")
         return self.cur.fetchall()
 
+    def change_status_announcements(self, id):
+        self.cur.execute('SELECT approved FROM announcement WHERE id=?', (id,))
+        if self.cur.fetchone()[0] == 0:
+            self.cur.execute('''UPDATE announcement SET approved=1 WHERE id=?;''', (id,))
+            self.conn.commit()
+        else:
+            self.cur.execute('''UPDATE announcement SET approved=0 WHERE id=?;''', (id,))
+            self.conn.commit()
+
     def create_table_summary(self):
         self.cur.execute('''CREATE TABLE IF NOT EXISTS summary(
+                         id INTEGER PRIMARY KEY AUTOINCREMENT, 
                          user_name TEXT, 
                          skills TEXT, 
                          district TEXT, 
                          tel_number TEXT, 
                          user INTEGER, 
+                         approved INTEGER, 
                          FOREIGN KEY (user) REFERENCES users (user_id))''')
 
     def check_users_summary(self, user_id):
@@ -69,9 +82,18 @@ class UsersBase:
         return self.cur.fetchall()
 
     def add_to_db_summary(self, list):
-        self.cur.execute('''INSERT INTO summary(user_name, skills, district, tel_number, user)
-                         VALUES(?,?,?,?,?)''', list)
+        self.cur.execute('''INSERT INTO summary(user_name, skills, district, tel_number, user, approved)
+                         VALUES(?,?,?,?,?,?)''', list)
         self.conn.commit()
+
+    def change_status_summary(self, id):
+        self.cur.execute('SELECT approved FROM summary WHERE id=?', (id,))
+        if self.cur.fetchone()[0] == 0:
+            self.cur.execute('''UPDATE summary SET approved=1 WHERE id=?;''', (id,))
+            self.conn.commit()
+        else:
+            self.cur.execute('''UPDATE summary SET approved=0 WHERE id=?;''', (id,))
+            self.conn.commit()
 
     def all_summary(self):
         self.cur.execute("SELECT * FROM summary")
