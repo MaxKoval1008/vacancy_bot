@@ -17,5 +17,5 @@ async def shutdown(dispatcher: Dispatcher):
     await dispatcher.storage.wait_closed()
 
 if __name__ == '__main__':
-    from handlers.main_handlers import dp
+    from handlers import dp
     executor.start_polling(dp, skip_updates=True, on_shutdown=shutdown)

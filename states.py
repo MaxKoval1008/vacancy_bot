@@ -8,7 +8,7 @@ class AnnouncementForm(StatesGroup):
     Salary = State()
     TelNumber = State()
     User = State()
-    Approved = State()
+    IsActive = State()
 
 
 class SummaryForm(StatesGroup):
@@ -17,4 +17,4 @@ class SummaryForm(StatesGroup):
     District = State()
     TelNumber = State()
     UserID = State()
-    Approved = State()
+    IsActive = State()

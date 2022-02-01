@@ -35,12 +35,12 @@ class UsersBase:
                          salary TEXT, 
                          tel_number TEXT, 
                          user INTEGER,
-                         approved INTEGER,  
+                         is_active TEXT,  
                          FOREIGN KEY (user) REFERENCES users (user_id))''')
 
     def add_to_db_announcement(self, list):
         self.cur.execute('''INSERT INTO announcement(work_type, name_vacancy, description, salary, tel_number, user, 
-        approved) VALUES(?,?,?,?,?,?,?)''', list)
+        is_active) VALUES(?,?,?,?,?,?,?)''', list)
         self.conn.commit()
 
     def check_users_announcement(self, user_id):
@@ -54,13 +54,23 @@ class UsersBase:
         self.cur.execute("SELECT * FROM announcement")
         return self.cur.fetchall()
 
+    def change_user_announcement(self, data_list):
+        self.cur.execute('''UPDATE announcement SET work_type=?, 
+                                                    name_vacancy=?, 
+                                                    description=?, 
+                                                    salary=?, 
+                                                    tel_number=?, 
+                                                    user=?, 
+                                                    is_active=? WHERE id=?''', data_list)
+        self.conn.commit()
+
     def change_status_announcements(self, id):
-        self.cur.execute('SELECT approved FROM announcement WHERE id=?', (id,))
-        if self.cur.fetchone()[0] == 0:
-            self.cur.execute('''UPDATE announcement SET approved=1 WHERE id=?;''', (id,))
+        self.cur.execute('SELECT is_active FROM announcement WHERE id=?', (id,))
+        if self.cur.fetchone()[0] == 'Active':
+            self.cur.execute('''UPDATE announcement SET is_active='Inactive' WHERE id=?;''', (id,))
             self.conn.commit()
         else:
-            self.cur.execute('''UPDATE announcement SET approved=0 WHERE id=?;''', (id,))
+            self.cur.execute('''UPDATE announcement SET is_active='Active' WHERE id=?;''', (id,))
             self.conn.commit()
 
     def create_table_summary(self):
@@ -71,28 +81,37 @@ class UsersBase:
                          district TEXT, 
                          tel_number TEXT, 
                          user INTEGER, 
-                         approved INTEGER, 
+                         is_active TEXT, 
                          FOREIGN KEY (user) REFERENCES users (user_id))''')
 
     def check_users_summary(self, user_id):
         return bool(self.cur.execute("SELECT * FROM summary WHERE user=?", (user_id,)).fetchone())
+
+    def change_user_summary(self, data_list):
+        self.cur.execute('''UPDATE summary SET user_name=?, 
+                                                    skills=?, 
+                                                    district=?, 
+                                                    tel_number=?, 
+                                                    user=?, 
+                                                    is_active=? WHERE id=?''', data_list)
+        self.conn.commit()
 
     def all_user_summary(self, user_id):
         self.cur.execute("SELECT * FROM summary WHERE user=?", (user_id,))
         return self.cur.fetchall()
 
     def add_to_db_summary(self, list):
-        self.cur.execute('''INSERT INTO summary(user_name, skills, district, tel_number, user, approved)
+        self.cur.execute('''INSERT INTO summary(user_name, skills, district, tel_number, user, is_active)
                          VALUES(?,?,?,?,?,?)''', list)
         self.conn.commit()
 
     def change_status_summary(self, id):
-        self.cur.execute('SELECT approved FROM summary WHERE id=?', (id,))
-        if self.cur.fetchone()[0] == 0:
-            self.cur.execute('''UPDATE summary SET approved=1 WHERE id=?;''', (id,))
+        self.cur.execute('SELECT is_active FROM summary WHERE id=?', (id,))
+        if self.cur.fetchone()[0] == 'Active':
+            self.cur.execute('''UPDATE summary SET is_active='Inactive' WHERE id=?;''', (id,))
             self.conn.commit()
         else:
-            self.cur.execute('''UPDATE summary SET approved=0 WHERE id=?;''', (id,))
+            self.cur.execute('''UPDATE summary SET is_active='Active' WHERE id=?;''', (id,))
             self.conn.commit()
 
     def all_summary(self):

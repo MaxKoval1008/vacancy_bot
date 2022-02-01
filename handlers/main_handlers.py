@@ -10,6 +10,16 @@ from states import SummaryForm as sum
 db = UsersBase('users.db')
 
 
+@dp.message_handler(commands=['is_admin'])
+async def process_start_command(message: types.Message):
+    db.create_table_users()
+    user_id = message.from_user.id
+    user_name = message.from_user.username
+    if not db.exists_user(user_id):
+        db.add_to_db_users(user_id, user_name)
+    await message.reply(f"Привет!", reply_markup=kb.markup_main)
+
+
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     db.create_table_users()
@@ -62,6 +72,12 @@ async def process_callback_button1(callback_query: types.CallbackQuery, state: F
     await callback_query.message.answer("Пожалуйста, укажите название вакансии.")
 
 
+@dp.callback_query_handler(lambda c: c.data == 'change_ann')
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    await ann.WorkType.set()
+    await callback_query.message.answer("Пожалуйста, сделайте выбор, используя клавиатуру ниже.", reply_markup=kb.markup_choiсe)
+
+
 @dp.message_handler(state=ann.NameVacancy)
 async def process_start_command(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
@@ -91,10 +107,17 @@ async def process_start_command(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['TelNumber'] = message.text
         data['User'] = message.from_user.id
-        data['Approved'] = 0
+        data['IsActive'] = 'Inactive'
     await message.answer("Спасибо, вакансия сохранена.")
     data = await state.get_data()
-    db.add_to_db_announcement(list(data.values()))
+    if db.check_users_announcement(message.from_user.id):
+        all_user_announcement = db.all_user_announcement(message.from_user.id)
+        id = all_user_announcement[0][0]
+        data_list = list(data.values())
+        data_list.append(id)
+        db.change_user_announcement(data_list)
+    else:
+        db.add_to_db_announcement(list(data.values()))
     await state.finish()
 
 
@@ -121,6 +144,12 @@ async def process_start_command(message: types.Message):
     else:
         await message.answer("Пожалуйста, введите Ваше ФИО.")
         await sum.UserName.set()
+
+
+@dp.callback_query_handler(lambda c: c.data == 'change_sum')
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    await sum.UserName.set()
+    await callback_query.message.answer("Пожалуйста, введите Ваше ФИО.")
 
 
 @dp.callback_query_handler(lambda c: c.data in ['brake_sum', 'activate_sum'])
@@ -160,10 +189,19 @@ async def process_start_command(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['TelNumber'] = message.text
         data['UserID'] = message.from_user.id
-        data['Approved'] = 0
+        data['IsActive'] = 'Inactive'
     await message.answer("Спасибо, резюме сохранено.")
     data = await state.get_data()
     db.add_to_db_summary(list(data.values()))
+    if db.check_users_summary(message.from_user.id):
+        all_users_summary = db.all_user_summary(message.from_user.id)
+        id = all_users_summary[0][0]
+        data_list = list(data.values())
+        data_list.append(id)
+        await message.answer(data_list)
+        db.change_user_summary(data_list)
+    else:
+        db.add_to_db_summary(list(data.values()))
     await state.finish()
 
 
