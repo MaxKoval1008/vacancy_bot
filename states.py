@@ -9,6 +9,7 @@ class AnnouncementForm(StatesGroup):
     TelNumber = State()
     User = State()
     IsActive = State()
+    Approved = State()
 
 
 class SummaryForm(StatesGroup):
@@ -18,3 +19,8 @@ class SummaryForm(StatesGroup):
     TelNumber = State()
     UserID = State()
     IsActive = State()
+    Approved = State()
+
+
+class AdminPassword(StatesGroup):
+    Password = State()

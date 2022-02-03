@@ -6,18 +6,150 @@ from privacy import privacy_text
 from data_base import UsersBase
 from states import AnnouncementForm as ann
 from states import SummaryForm as sum
+from states import AdminPassword
+from .admin_settings import is_admin
 
 db = UsersBase('users.db')
 
 
 @dp.message_handler(commands=['is_admin'])
 async def process_start_command(message: types.Message):
-    db.create_table_users()
-    user_id = message.from_user.id
-    user_name = message.from_user.username
-    if not db.exists_user(user_id):
-        db.add_to_db_users(user_id, user_name)
-    await message.reply(f"Привет!", reply_markup=kb.markup_main)
+    await message.answer(f"Для доступа в кабинет администратора нажмите кнопку и введите пароль",
+                         reply_markup=kb.markup_is_admin)
+
+
+@dp.callback_query_handler(lambda c: c.data == 'admin_keyboard')
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    await callback_query.message.answer("Введите пароль:")
+    await AdminPassword.Password.set()
+
+
+@dp.message_handler(state=AdminPassword.Password)
+async def process_start_command(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['Password'] = message.text
+    data = await state.get_data()
+    if is_admin(list(data.values())[0]):
+        await message.answer('Добро пожаловать в кабинет администратора!', reply_markup=kb.markup_admin_keyboard)
+    else:
+        await message.answer('Неправильный пароль.')
+    await state.finish()
+
+
+@dp.message_handler(text=['Объявления'])
+async def process_start_command(message: types.Message):
+    all_announcements = db.all_announcements()
+    for i in all_announcements:
+        text = f'''\n
+                ID: {i[0]}\n
+                Тип работы: {i[1]}\n
+                Название вакансии: {i[2]}\n
+                Описание вакансии: {i[3]}\n
+                Зарплатные ожидания: {i[4]}\n
+                Телефон: {i[5]}\n
+                Пользователь: {i[6]}\n
+                Статус: {i[7]}\n
+                Подтверждение: {i[8]} \n'''
+        await message.answer(text)
+    await message.answer('Для активации нажмите кнопку ниже', reply_markup=kb.markup_admin_change_ann)
+
+
+@dp.callback_query_handler(lambda c: c.data in ['markup_admin_change_ann', 'more_ann'])
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    text_value = db.disapproved_user_announcement()
+    try:
+        text = f'''\nID: {text_value[0][0]}
+        Тип работы: {text_value[0][1]}
+        Название вакансии: {text_value[0][2]}
+        Описание вакансии: {text_value[0][3]}
+        Зарплатные ожидания: {text_value[0][4]}
+        Телефон: {text_value[0][5]}
+        Пользователь: {text_value[0][6]}
+        Статус: {text_value[0][7]}
+        Подтверждение: {text_value[0][8]}'''
+        await callback_query.message.answer(text, reply_markup=kb.markup_change_mode_ann)
+    except IndexError:
+        await callback_query.message.answer('Все объявления подтверждены.')
+
+
+@dp.callback_query_handler(lambda c: c.data == 'approve_ann')
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    disapproved_user_announcement = db.disapproved_user_announcement()
+    try:
+        id = disapproved_user_announcement[0][0]
+        db.approving_announcement(id)
+        await callback_query.message.answer('Объявление подтверждено', reply_markup=kb.markup_more_ann)
+    except IndexError:
+        await callback_query.message.answer('Все объявления подтверждены.')
+
+
+@dp.callback_query_handler(lambda c: c.data == 'disapprove_ann')
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    approved_user_announcement = db.approved_user_announcement()
+    try:
+        id = approved_user_announcement[0][0]
+        db.disapproving_announcement(id)
+        await callback_query.message.answer('Объявление удалено', reply_markup=kb.markup_more_ann)
+    except IndexError:
+        await callback_query.message.answer('Все объявления удалены.')
+
+
+@dp.message_handler(text=['Резюме'])
+async def process_start_command(message: types.Message):
+    all_summary = db.all_summary()
+    for i in all_summary:
+        text = f'''\n
+        ID: {i[0]}\n
+        ФИО: {i[1]}\n
+        Навыки: {i[2]}\n
+        Район: {i[3]}\n
+        Телефон: {i[4]}\n
+        Пользователь: {i[5]}\n
+        Статус: {i[6]}\n
+        Подтверждение: {i[7]} \n'''
+        await message.answer(text)
+    await message.answer('Для активации нажмите кнопку ниже', reply_markup=kb.markup_admin_change_sum)
+
+
+@dp.callback_query_handler(lambda c: c.data in ['markup_admin_change_sum', 'more_sum'])
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    text_value = db.disapproved_user_summary()
+    await callback_query.message.answer(text_value)
+    try:
+        text = f'''\n
+        ID: {text_value[0]}\n
+        ФИО: {text_value[1]}\n
+        Навыки: {text_value[2]}\n
+        Район: {text_value[3]}\n
+        Телефон: {text_value[4]}\n
+        Пользователь: {text_value[5]}\n
+        Статус: {text_value[6]}\n
+        Подтверждение: {text_value[7]} \n'''
+        await callback_query.message.answer(text, reply_markup=kb.markup_change_mode_sum)
+    except IndexError:
+        await callback_query.message.answer('Все резюме подтверждены.')
+
+
+@dp.callback_query_handler(lambda c: c.data == 'approve_sum')
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    disapproved_user_summary = db.disapproved_user_summary()
+    try:
+        id = disapproved_user_summary[0][0]
+        db.approving_summary(id)
+        await callback_query.message.answer('Резюме подтверждено', reply_markup=kb.markup_more_ann)
+    except IndexError:
+        await callback_query.message.answer('Все резюме подтверждены.')
+
+
+@dp.callback_query_handler(lambda c: c.data == 'disapprove_ann')
+async def process_callback_button1(callback_query: types.CallbackQuery):
+    approved_user_summary = db.approved_user_summary()
+    try:
+        id = approved_user_summary[0][0]
+        db.disapproving_summary(id)
+        await callback_query.message.answer('Резюме удалено', reply_markup=kb.markup_more_sum)
+    except IndexError:
+        await callback_query.message.answer('Все резюме удалены.')
 
 
 @dp.message_handler(commands=['start'])
@@ -36,10 +168,15 @@ async def get_text_messages(message: types.Message):
     await message.answer(f'User ID: {user_profile[0]}, Имя пользователя: {str(user_profile[1])}')
 
 
-@dp.message_handler(commands=['all_users'])
+@dp.message_handler(text='Пользователи')
 async def get_text_messages(message: types.Message):
     all_users = db.get_all_users()
     await message.answer(all_users)
+
+
+@dp.message_handler(text='Выйти')
+async def get_text_messages(message: types.Message):
+    await message.answer('Выход', reply_markup=kb.markup_main)
 
 
 @dp.message_handler(text=['Мои объявления'])
@@ -47,7 +184,7 @@ async def process_start_command(message: types.Message):
     db.create_table_announcement()
     if db.check_users_announcement(message.from_user.id):
         all_user_announcement = db.all_user_announcement(message.from_user.id)
-        if all_user_announcement[-1][-1] == 1:
+        if all_user_announcement[-1][-2] == 'Active':
             await message.reply(all_user_announcement, reply_markup=kb.markup_3_1)
         else:
             await message.reply(all_user_announcement, reply_markup=kb.markup_3_2)
@@ -75,7 +212,8 @@ async def process_callback_button1(callback_query: types.CallbackQuery, state: F
 @dp.callback_query_handler(lambda c: c.data == 'change_ann')
 async def process_callback_button1(callback_query: types.CallbackQuery):
     await ann.WorkType.set()
-    await callback_query.message.answer("Пожалуйста, сделайте выбор, используя клавиатуру ниже.", reply_markup=kb.markup_choiсe)
+    await callback_query.message.answer("Пожалуйста, сделайте выбор, используя клавиатуру ниже.",
+                                        reply_markup=kb.markup_choiсe)
 
 
 @dp.message_handler(state=ann.NameVacancy)
@@ -107,7 +245,8 @@ async def process_start_command(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['TelNumber'] = message.text
         data['User'] = message.from_user.id
-        data['IsActive'] = 'Inactive'
+        data['IsActive'] = 'Active'
+        data['Approved'] = 'Disapproved'
     await message.answer("Спасибо, вакансия сохранена.")
     data = await state.get_data()
     if db.check_users_announcement(message.from_user.id):
@@ -129,7 +268,18 @@ async def text_handler(message: types.Message):
 @dp.message_handler(text='Cписок предложений')
 async def text_handler(message: types.Message):
     all_vacancy = db.all_announcements()
-    await message.reply(all_vacancy)
+    for i in all_vacancy:
+        text = f'''\n
+        ID: {i[0]}\n
+        Тип работы: {i[1]}\n
+        Название вакансии: {i[2]}\n
+        Описание вакансии: {i[3]}\n
+        Зарплатные ожидания: {i[4]}\n
+        Телефон: {i[5]}\n
+        Пользователь: {i[6]}\n
+        Статус: {i[7]}\n
+        Подтверждение: {i[8]} \n'''
+        await message.answer(text)
 
 
 @dp.message_handler(text='Мои резюме')
@@ -137,7 +287,7 @@ async def process_start_command(message: types.Message):
     db.create_table_summary()
     if db.check_users_summary(message.from_user.id):
         all_user_summary = db.all_user_summary(message.from_user.id)
-        if all_user_summary[-1][-1] == 1:
+        if all_user_summary[-1][-2] == 'Active':
             await message.reply(all_user_summary, reply_markup=kb.markup_4_1)
         else:
             await message.reply(all_user_summary, reply_markup=kb.markup_4_2)
@@ -189,16 +339,15 @@ async def process_start_command(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['TelNumber'] = message.text
         data['UserID'] = message.from_user.id
-        data['IsActive'] = 'Inactive'
+        data['IsActive'] = 'Active'
+        data['Approved'] = 'Disapproved'
     await message.answer("Спасибо, резюме сохранено.")
     data = await state.get_data()
-    db.add_to_db_summary(list(data.values()))
     if db.check_users_summary(message.from_user.id):
         all_users_summary = db.all_user_summary(message.from_user.id)
         id = all_users_summary[0][0]
         data_list = list(data.values())
         data_list.append(id)
-        await message.answer(data_list)
         db.change_user_summary(data_list)
     else:
         db.add_to_db_summary(list(data.values()))
@@ -208,11 +357,14 @@ async def process_start_command(message: types.Message, state: FSMContext):
 @dp.message_handler(text='Список резюме')
 async def text_handler(message: types.Message):
     all_summary = db.all_summary()
-    await message.reply(all_summary)
-
-
-@dp.message_handler(commands='11')
-async def text_handler(message: types.Message):
-    all_summary = db.all_summary()
     for i in all_summary:
-        await message.reply(i[:-1])
+        text = f'''\n
+        ID: {i[0]}\n
+        ФИО: {i[1]}\n
+        Навыки: {i[2]}\n
+        Район: {i[3]}\n
+        Телефон: {i[4]}\n
+        Пользователь: {i[5]}\n
+        Статус: {i[6]}\n
+        Подтверждение: {i[7]} \n'''
+        await message.answer(text)
