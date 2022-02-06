@@ -10,6 +10,7 @@ from states import AdminPassword
 from .admin_settings import is_admin
 
 db = UsersBase('users.db')
+admin = []
 
 
 @dp.message_handler(commands=['is_admin'])
@@ -31,6 +32,8 @@ async def process_start_command(message: types.Message, state: FSMContext):
     data = await state.get_data()
     if is_admin(list(data.values())[0]):
         await message.answer('Добро пожаловать в кабинет администратора!', reply_markup=kb.markup_admin_keyboard)
+        if message.from_user.id not in admin:
+            admin.append(message.from_user.id)
     else:
         await message.answer('Неправильный пароль.')
     await state.finish()
@@ -38,20 +41,23 @@ async def process_start_command(message: types.Message, state: FSMContext):
 
 @dp.message_handler(text=['Объявления'])
 async def process_start_command(message: types.Message):
-    all_announcements = db.all_announcements()
-    for i in all_announcements:
-        text = f'''\n
-                ID: {i[0]}\n
-                Тип работы: {i[1]}\n
-                Название вакансии: {i[2]}\n
-                Описание вакансии: {i[3]}\n
-                Зарплатные ожидания: {i[4]}\n
-                Телефон: {i[5]}\n
-                Пользователь: {i[6]}\n
-                Статус: {i[7]}\n
-                Подтверждение: {i[8]} \n'''
-        await message.answer(text)
-    await message.answer('Для активации нажмите кнопку ниже', reply_markup=kb.markup_admin_change_ann)
+    if message.from_user.id in admin:
+        all_announcements = db.all_announcements()
+        for i in all_announcements:
+            text = f'''\n
+                    ID: {i[0]}\n
+                    Тип работы: {i[1]}\n
+                    Название вакансии: {i[2]}\n
+                    Описание вакансии: {i[3]}\n
+                    Зарплатные ожидания: {i[4]}\n
+                    Телефон: {i[5]}\n
+                    Пользователь: {i[6]}\n
+                    Статус: {i[7]}\n
+                    Подтверждение: {i[8]} \n'''
+            await message.answer(text)
+        await message.answer('Для активации нажмите кнопку ниже', reply_markup=kb.markup_admin_change_ann)
+    else:
+        await message.answer('Отказано в доступе')
 
 
 @dp.callback_query_handler(lambda c: c.data in ['markup_admin_change_ann', 'more_ann'])
@@ -96,19 +102,22 @@ async def process_callback_button1(callback_query: types.CallbackQuery):
 
 @dp.message_handler(text=['Резюме'])
 async def process_start_command(message: types.Message):
-    all_summary = db.all_summary()
-    for i in all_summary:
-        text = f'''\n
-        ID: {i[0]}\n
-        ФИО: {i[1]}\n
-        Навыки: {i[2]}\n
-        Район: {i[3]}\n
-        Телефон: {i[4]}\n
-        Пользователь: {i[5]}\n
-        Статус: {i[6]}\n
-        Подтверждение: {i[7]} \n'''
-        await message.answer(text)
-    await message.answer('Для активации нажмите кнопку ниже', reply_markup=kb.markup_admin_change_sum)
+    if message.from_user.id in admin:
+        all_summary = db.all_summary()
+        for i in all_summary:
+            text = f'''\n
+            ID: {i[0]}\n
+            ФИО: {i[1]}\n
+            Навыки: {i[2]}\n
+            Район: {i[3]}\n
+            Телефон: {i[4]}\n
+            Пользователь: {i[5]}\n
+            Статус: {i[6]}\n
+            Подтверждение: {i[7]} \n'''
+            await message.answer(text)
+        await message.answer('Для активации нажмите кнопку ниже', reply_markup=kb.markup_admin_change_sum)
+    else:
+        await message.answer('Отказано в доступе')
 
 
 @dp.callback_query_handler(lambda c: c.data in ['markup_admin_change_sum', 'more_sum'])
@@ -117,14 +126,14 @@ async def process_callback_button1(callback_query: types.CallbackQuery):
     await callback_query.message.answer(text_value)
     try:
         text = f'''\n
-        ID: {text_value[0]}\n
-        ФИО: {text_value[1]}\n
-        Навыки: {text_value[2]}\n
-        Район: {text_value[3]}\n
-        Телефон: {text_value[4]}\n
-        Пользователь: {text_value[5]}\n
-        Статус: {text_value[6]}\n
-        Подтверждение: {text_value[7]} \n'''
+        ID: {text_value[0][0]}\n
+        ФИО: {text_value[0][1]}\n
+        Навыки: {text_value[0][2]}\n
+        Район: {text_value[0][3]}\n
+        Телефон: {text_value[0][4]}\n
+        Пользователь: {text_value[0][5]}\n
+        Статус: {text_value[0][6]}\n
+        Подтверждение: {text_value[0][7]} \n'''
         await callback_query.message.answer(text, reply_markup=kb.markup_change_mode_sum)
     except IndexError:
         await callback_query.message.answer('Все резюме подтверждены.')
@@ -136,12 +145,12 @@ async def process_callback_button1(callback_query: types.CallbackQuery):
     try:
         id = disapproved_user_summary[0][0]
         db.approving_summary(id)
-        await callback_query.message.answer('Резюме подтверждено', reply_markup=kb.markup_more_ann)
+        await callback_query.message.answer('Резюме подтверждено', reply_markup=kb.markup_more_sum)
     except IndexError:
         await callback_query.message.answer('Все резюме подтверждены.')
 
 
-@dp.callback_query_handler(lambda c: c.data == 'disapprove_ann')
+@dp.callback_query_handler(lambda c: c.data == 'disapprove_sum')
 async def process_callback_button1(callback_query: types.CallbackQuery):
     approved_user_summary = db.approved_user_summary()
     try:
@@ -170,13 +179,20 @@ async def get_text_messages(message: types.Message):
 
 @dp.message_handler(text='Пользователи')
 async def get_text_messages(message: types.Message):
-    all_users = db.get_all_users()
-    await message.answer(all_users)
+    if message.from_user.id in admin:
+        all_users = db.get_all_users()
+        await message.answer(all_users)
+    else:
+        await message.answer('Отказано в доступе')
 
 
 @dp.message_handler(text='Выйти')
 async def get_text_messages(message: types.Message):
-    await message.answer('Выход', reply_markup=kb.markup_main)
+    if message.from_user.id in admin:
+        admin.remove(message.from_user.id)
+        await message.answer('Выход', reply_markup=kb.markup_main)
+    else:
+        await message.answer('Отказано в доступе')
 
 
 @dp.message_handler(text=['Мои объявления'])
