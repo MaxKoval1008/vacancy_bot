@@ -1,5 +1,10 @@
 # tg_vacancy
-В планах доработать функцию подтверждения для администратора объявлений и резюме
-через инлайн кнопки, которые будут менять поле подтверждения с False на True.
-Также планирую добавить возможность изменения самого объявления и резюме для пользователя.
-На данный момент работает функционал кнопок, функционал ввода/вывода объявлений и резюме.
+
+This bot is an analogue of a job search service and allows you to post vacancies and profiles.
+
+for python 3.8
+
+- virtualenv venv
+- source venv/bin/activate
+- pip install -r requirements.txt
+- python bot.py
